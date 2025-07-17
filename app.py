@@ -14,7 +14,6 @@ from typing import Dict, List, Optional
 import os
 from PIL import Image
 import io
-from clipboard_paste import clipboard_paste_area
 
 # 페이지 설정
 st.set_page_config(
@@ -237,59 +236,18 @@ def main():
     if evaluation_mode == "단일 화면 평가":
         st.subheader("📱 프로토타입 업로드")
         
-        # 파일 업로드와 클립보드 붙여넣기 옵션 제공
-        upload_method = st.radio(
-            "업로드 방법을 선택하세요:",
-            ["파일 업로드", "클립보드에서 붙여넣기"],
-            horizontal=True
+        uploaded_file = st.file_uploader(
+            "프로토타입 이미지를 업로드하세요",
+            type=['png', 'jpg', 'jpeg']
         )
         
-        uploaded_file = None
-        pasted_image = None
-        
-        if upload_method == "파일 업로드":
-            uploaded_file = st.file_uploader(
-                "프로토타입 이미지를 업로드하세요",
-                type=['png', 'jpg', 'jpeg']
-            )
-        else:
-            pasted_image = clipboard_paste_area(
-                label="📋 이미지를 복사한 후 아래 영역을 클릭하고 Ctrl+V를 눌러주세요:",
-                key="paste_single",
-                height=200
-            )
-        
-        # 이미지가 업로드되거나 붙여넣어진 경우
-        if uploaded_file:
-            current_image = uploaded_file
-        elif pasted_image:
-            current_image = pasted_image
-        else:
-            # 세션 상태에서 붙여넣은 이미지 확인
-            session_key = "clipboard_paste_paste_single"
-            current_image = st.session_state.get(session_key, None)
-        
-        # 이미지 미리보기 표시 (업로드된 경우 또는 붙여넣어진 경우)
-        if current_image:
-            st.image(current_image, caption="업로드된 프로토타입", width=400)
-        
-        # 평가 버튼 표시 조건 개선 - 세션 상태도 확인
-        show_button = False
-        if upload_method == "파일 업로드" and uploaded_file:
-            show_button = True
-        elif upload_method == "클립보드에서 붙여넣기":
-            # 컴포넌트 반환값 또는 세션 상태 확인
-            session_key = "clipboard_paste_paste_single"
-            if pasted_image or (session_key in st.session_state and st.session_state[session_key] is not None):
-                show_button = True
-        
-        if show_button and st.button("평가 시작"):
+        if uploaded_file and st.button("평가 시작"):
             with st.spinner("AI 페르소나들이 평가 중입니다..."):
                 # 업로드된 파일이나 붙여넣은 이미지 처리 (encode_image가 둘 다 처리)
-                image_base64 = evaluator.encode_image(current_image)
+                image_base64 = evaluator.encode_image(uploaded_file)
                 
                 # 이미지 표시
-                st.image(current_image, caption="평가 대상 프로토타입", width=400)
+                st.image(uploaded_file, caption="평가 대상 프로토타입", width=400)
                 
                 # 각 페르소나별 평가 실행
                 results = []
@@ -309,13 +267,6 @@ def main():
     else:  # A/B 테스트 모드
         st.subheader("📱 A/B 테스트 프로토타입 업로드")
         
-        # A/B 테스트 업로드 방법 선택
-        ab_upload_method = st.radio(
-            "업로드 방법을 선택하세요:",
-            ["파일 업로드", "클립보드에서 붙여넣기"],
-            horizontal=True,
-            key="ab_upload_method"
-        )
         
         col1, col2 = st.columns(2)
         
@@ -326,52 +277,23 @@ def main():
         
         with col1:
             st.write("**A안**")
-            if ab_upload_method == "파일 업로드":
-                uploaded_file_a = st.file_uploader(
-                    "A안 이미지 업로드",
-                    type=['png', 'jpg', 'jpeg'],
-                    key="file_a"
-                )
-            else:
-                pasted_image_a = clipboard_paste_area(
-                    label="📋 A안 이미지를 복사한 후 아래 영역을 클릭하고 Ctrl+V를 눌러주세요:",
-                    key="paste_a",
-                    height=180
-                )
+            uploaded_file_a = st.file_uploader(
+                "A안 이미지 업로드",
+                type=['png', 'jpg', 'jpeg'],
+                key="file_a"
+            )
         
         with col2:
             st.write("**B안**")
-            if ab_upload_method == "파일 업로드":
-                uploaded_file_b = st.file_uploader(
-                    "B안 이미지 업로드",
-                    type=['png', 'jpg', 'jpeg'],
-                    key="file_b"
-                )
-            else:
-                pasted_image_b = clipboard_paste_area(
-                    label="📋 B안 이미지를 복사한 후 아래 영역을 클릭하고 Ctrl+V를 눌러주세요:",
-                    key="paste_b",
-                    height=180
-                )
+            uploaded_file_b = st.file_uploader(
+                "B안 이미지 업로드",
+                type=['png', 'jpg', 'jpeg'],
+                key="file_b"
+            )
         
         # 현재 이미지들 설정
-        if uploaded_file_a:
-            current_image_a = uploaded_file_a
-        elif pasted_image_a:
-            current_image_a = pasted_image_a
-        else:
-            # 세션 상태에서 A안 이미지 확인
-            session_key_a = "clipboard_paste_paste_a"
-            current_image_a = st.session_state.get(session_key_a, None)
-            
-        if uploaded_file_b:
-            current_image_b = uploaded_file_b
-        elif pasted_image_b:
-            current_image_b = pasted_image_b
-        else:
-            # 세션 상태에서 B안 이미지 확인
-            session_key_b = "clipboard_paste_paste_b"
-            current_image_b = st.session_state.get(session_key_b, None)
+        current_image_a = uploaded_file_a
+        current_image_b = uploaded_file_b
         
         # 이미지 미리보기 표시
         col1_preview, col2_preview = st.columns(2)
